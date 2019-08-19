@@ -1,5 +1,3 @@
-
-
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -13,7 +11,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 public class tryfortest {
-	static test parser = null;
+	static ExpressionParser parser = null;
 	
 	public static void main(String[] args) {
 		JFrame guiFrame = new JFrame();
@@ -51,18 +49,12 @@ public class tryfortest {
                 // Put parens around sentence so that parser knows scope
                 //sentence = "(" + sentence + ")";
                 InputStream is = new ByteArrayInputStream(sentence.getBytes());
-                if(parser == null) parser = new test(is);
-                else test.ReInit(is);
+                if(parser == null) parser = new ExpressionParser(is);
+                else ExpressionParser.ReInit(is);
                 try
                 {
-                  switch (test.start())
-                  {
-                    case 0 :
-                    	outputText.setText("expression parsed ok.");
-                    break;
-                    default :
-                    break;
-                  }
+                 ASTstart start = ExpressionParser.start();
+                 outputText.setText(genSQL(start));
                 }
                 catch (Exception e)
                 {
@@ -79,6 +71,10 @@ public class tryfortest {
                   
                 }
         	}
+
+            private String genSQL(ASTstart start) {
+                return start.toString();
+            }
         });
 
         guiFrame.add(mainPanel, BorderLayout.NORTH);

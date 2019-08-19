@@ -1,0 +1,146 @@
+options {
+   MULTI=true;
+   VISITOR=true;
+   NODE_DEFAULT_VOID=true;
+   NODE_EXTENDS="BaseNode";
+}
+
+PARSER_BEGIN(ExpressionParser)
+
+public class ExpressionParser {
+
+  public static void main(String args[]) throws Exception {
+    ExpressionParser parser = new ExpressionParser(new java.io.FileReader(args[0]));
+    //ExpressionParser parser = new ExpressionParser(System.in);
+    ASTstart expr=parser.start();
+    ExpressionVisitor v=new ExpressionVisitor();
+    System.out.println(expr.jjtAccept(v,null));
+  }
+}
+
+PARSER_END(ExpressionParser)
+
+SKIP :
+{ 
+	"\t"
+	|"\n"
+	|"\r"
+}
+
+TOKEN : /* action */
+{
+	   < CREATE: "create" | "CREATE" >
+	| < UPDATE : "update" | "UPDATE" >
+	| < SET : "set" | "SET" >
+	| < LINK : "link" | "LINK" >
+	//|  < TABLE: (< STRING >) >
+	|  < TABLE: "Car" | "Person" >
+}
+
+TOKEN :
+{
+	  < NUMBER : (<DIGIT>)+  >
+	| <STRING: (< LETTER >)+ >
+	| < LEFT_PAREN : "(" >
+	| < RIGHT_PAREN : ")" >
+	| < COMMA : "," >
+	|  < SEMICOLON : ";" >
+	| < ASSIGN : "=" >
+	|  < QUOTE_MARK: "'" >
+}
+
+
+TOKEN :
+{
+	  <#DIGIT: ["0"-"9"]>
+	| <#LETTER: ["a"-"z", "A"-"Z"]>
+}
+
+ASTstart start() #start:{}
+{
+  (statement())+
+  { return jjtThis; }
+}
+
+void statement() #Statement:
+{}
+{
+	//identifier()"="expression()";"
+		createExpression()
+	//|  update_action()
+}
+
+void createExpression() #createStatement:
+{}
+{
+  < CREATE >" "createParameterExpression()";"
+//  <CREATE> <SPACE> < NUMBER > <SPACE > <TABLE > < SEMICOLON >
+}
+
+void createParameterExpression() :
+{}
+{
+	numberExpression()" "tableExpression()
+}
+
+/*
+void identifier() :
+{}
+{
+	<VARIABLE>
+	{
+		jjtThis.data.put("name",token.image);
+	}#Variable
+}
+
+void expression():
+{}
+{
+	additiveExpression()
+}
+
+void additiveExpression() :
+{}
+{
+	multiplicativeExpression()
+	(<PLUS> multiplicativeExpression()#AddExpr(2)
+	 | <MINUS> multiplicativeExpression()#SubractExpr(2)
+	)*
+}
+
+void multiplicativeExpression() :
+{}
+{
+	unaryExpression()
+	(
+	 <MULTIPLY> unaryExpression()#MultiplyExpr(2)
+	 |<DIVIDE> unaryExpression()#DivideExpr(2)
+	)*
+}
+void unaryExpression() :
+{}
+{
+	<MINUS> numberExpression()#NegateExpr(1)|
+	numberExpression()
+}
+*/
+
+void numberExpression() :
+{
+}
+{
+	<NUMBER>
+	{ 
+		jjtThis.data.put("value",new Integer(Integer.parseInt(token.image)));
+	}#Number
+}
+
+void tableExpression() :
+{
+}
+{
+	<TABLE>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#Table
+}
