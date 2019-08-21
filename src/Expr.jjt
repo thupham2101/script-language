@@ -7,16 +7,7 @@ options {
 
 PARSER_BEGIN(ExpressionParser)
 
-public class ExpressionParser {
-
-  public static void main(String args[]) throws Exception {
-    ExpressionParser parser = new ExpressionParser(new java.io.FileReader(args[0]));
-    //ExpressionParser parser = new ExpressionParser(System.in);
-    ASTstart expr=parser.start();
-    ExpressionVisitor v=new ExpressionVisitor();
-    System.out.println(expr.jjtAccept(v,null));
-  }
-}
+public class ExpressionParser {}
 
 PARSER_END(ExpressionParser)
 
@@ -33,7 +24,7 @@ TOKEN : /* action */
 	| < UPDATE : "update" | "UPDATE" >
 	| < SET : "set" | "SET" >
 	| < LINK : "link" | "LINK" >
-	//|  < TABLE: (< STRING >) >
+//	|  < TABLE: (< STRING >) >
 	|  < TABLE: "Car" | "Person" >
 }
 

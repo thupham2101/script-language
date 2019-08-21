@@ -54,7 +54,8 @@ public class tryfortest {
                 try
                 {
                  ASTstart start = ExpressionParser.start();
-                 outputText.setText(genSQL(start));
+                 SQLVisitor visitor = new SQLVisitor();
+                 outputText.setText((String) visitor.visit(start, ""));
                 }
                 catch (Exception e)
                 {
@@ -71,10 +72,6 @@ public class tryfortest {
                   
                 }
         	}
-
-            private String genSQL(ASTstart start) {
-                return start.toString();
-            }
         });
 
         guiFrame.add(mainPanel, BorderLayout.NORTH);
