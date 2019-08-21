@@ -22,22 +22,20 @@ TOKEN : /* action */
 {
 	   < CREATE: "create" | "CREATE" >
 	| < UPDATE : "update" | "UPDATE" >
-	| < SET : "set" | "SET" >
-	| < LINK : "link" | "LINK" >
+	|  < DOEXACTLY: "do such that exactly" >
+	| <  DOATMOST: "do such that at most" >
 //	|  < TABLE: (< STRING >) >
 	|  < TABLE: "Car" | "Person" >
+	|  < PROP: "color" | "age" >
+	|  < VALUE: "white" | "WHITE" >
+//	|  <  AND: "AND" >
+
 }
 
 TOKEN :
 {
 	  < NUMBER : (<DIGIT>)+  >
 	| <STRING: (< LETTER >)+ >
-	| < LEFT_PAREN : "(" >
-	| < RIGHT_PAREN : ")" >
-	| < COMMA : "," >
-	|  < SEMICOLON : ";" >
-	| < ASSIGN : "=" >
-	|  < QUOTE_MARK: "'" >
 }
 
 
@@ -58,14 +56,15 @@ void statement() #Statement:
 {
 	//identifier()"="expression()";"
 		createExpression()
-	//|  update_action()
+	|   doExactlyExpression()
+	|   doAtMostExpression()
+	
 }
 
 void createExpression() #createStatement:
 {}
 {
   < CREATE >" "createParameterExpression()";"
-//  <CREATE> <SPACE> < NUMBER > <SPACE > <TABLE > < SEMICOLON >
 }
 
 void createParameterExpression() :
@@ -74,47 +73,25 @@ void createParameterExpression() :
 	numberExpression()" "tableExpression()
 }
 
-/*
-void identifier() :
+void doExactlyExpression() #doExactly:
 {}
 {
-	<VARIABLE>
-	{
-		jjtThis.data.put("name",token.image);
-	}#Variable
+  < DOEXACTLY >" " doParameterExpression()";"
 }
 
-void expression():
+void doAtMostExpression() #doAtMost:
 {}
 {
-	additiveExpression()
+  < DOATMOST >" " doParameterExpression()";"
 }
 
-void additiveExpression() :
+void doParameterExpression():
 {}
 {
-	multiplicativeExpression()
-	(<PLUS> multiplicativeExpression()#AddExpr(2)
-	 | <MINUS> multiplicativeExpression()#SubractExpr(2)
-	)*
+	numberExpression()" "tableExpression()" "assign()
 }
 
-void multiplicativeExpression() :
-{}
-{
-	unaryExpression()
-	(
-	 <MULTIPLY> unaryExpression()#MultiplyExpr(2)
-	 |<DIVIDE> unaryExpression()#DivideExpr(2)
-	)*
-}
-void unaryExpression() :
-{}
-{
-	<MINUS> numberExpression()#NegateExpr(1)|
-	numberExpression()
-}
-*/
+
 
 void numberExpression() :
 {
@@ -134,4 +111,28 @@ void tableExpression() :
 	{ 
 		jjtThis.data.put("value",token.image);
 	}#Table
+}
+
+void assign() :
+{}
+{
+	prop()" = "val()
+	
+}
+void prop() :
+{}
+{
+	<PROP>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#Property
+}
+
+void val() :
+{}
+{
+	<VALUE>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#Value
 }
