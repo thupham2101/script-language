@@ -38,3 +38,16 @@
 /tryfortest$1.class
 /tryfortest.class
 /SQLVisitor.class
+/ASTaddStatement.java
+/ASTClass.java
+/ASTdoStatement.java
+/ASTProperty.java
+/ASTQuantifier.java
+/ASTValue.java
+/ASTClass.class
+/ASTProperty.class
+/ASTQuantifier.class
+/ASTValue.class
+/ASTaddStatement.class
+/ASTdoStatement.class
+/MyUpdate.class

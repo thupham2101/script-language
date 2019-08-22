@@ -59,11 +59,13 @@ public class tryfortest {
                 }
                 catch (Exception e)
                 {
+                  e.printStackTrace();
                   outputText.setText("error in expression.\n"+
                 		  				e.getMessage());
                 }
                 catch (Error e)
                 {
+                    e.printStackTrace();
                  outputText.setText("error in expression.\n"+
     		  						   e.getMessage());
                 }
