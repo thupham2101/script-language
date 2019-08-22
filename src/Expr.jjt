@@ -20,29 +20,26 @@ SKIP :
 
 TOKEN : /* action */
 {
-	   < CREATE: "create" | "CREATE" >
+	   < ADD: "add" | "ADD" >
+	|  < DO: "do" | "DO">
 	| < UPDATE : "update" | "UPDATE" >
-	|  < DOEXACTLY: "do such that exactly" >
-	| <  DOATMOST: "do such that at most" >
-//	|  < TABLE: (< STRING >) >
-	|  < TABLE: "Car" | "Person" >
-	|  < PROP: "color" | "age" >
-	|  < VALUE: "white" | "WHITE" >
-//	|  <  AND: "AND" >
-
+	| < LINK : "link" | "LINK" >
 }
 
-TOKEN :
+TOKEN : //keywords
 {
-	  < NUMBER : (<DIGIT>)+  >
-	| <STRING: (< LETTER >)+ >
+     	< QUANTIFIER: "EXACTLY" | "AT MOST" | "AT LEAST" >
+    |   < SUCH: "SUCH THAT">
+    | 	< NUMBER : (<DIGIT>)+  >
+	|   < CLASS: "Car" | "Person" >
+	|   < PROP: "color" | "name" >
+	|   < VALUE: "'white'" | "'no color'" >
 }
 
 
 TOKEN :
 {
 	  <#DIGIT: ["0"-"9"]>
-	| <#LETTER: ["a"-"z", "A"-"Z"]>
 }
 
 ASTstart start() #start:{}
@@ -54,48 +51,60 @@ ASTstart start() #start:{}
 void statement() #Statement:
 {}
 {
-	//identifier()"="expression()";"
-		createExpression()
-	|   doExactlyExpression()
-	|   doAtMostExpression()
-	
+		addExpression()
+	|   doExpression()	
 }
 
-void createExpression() #createStatement:
+//   ADD EXPRESSION
+void addExpression() #addStatement:
 {}
 {
-  < CREATE >" "createParameterExpression()";"
+  < ADD >" "addParameter()";"
 }
 
-void createParameterExpression() :
+void addParameter() :
 {}
 {
-	numberExpression()" "tableExpression()
+	numberExpression()" "classExpression()
 }
 
-void doExactlyExpression() #doExactly:
+//   DO EXPRESSION
+void doExpression() #doStatement:
 {}
 {
-  < DOEXACTLY >" " doParameterExpression()";"
+  < DO >" "doString()";"
 }
 
-void doAtMostExpression() #doAtMost:
+
+void doString():
 {}
 {
-  < DOATMOST >" " doParameterExpression()";"
+	quantifier()" "doSubString()
 }
 
-void doParameterExpression():
+void quantifier():
 {}
 {
-	numberExpression()" "tableExpression()" "assign()
+	<QUANTIFIER>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#Quantifier
 }
 
+void doSubString():
+{}
+{
+	doParameter()" "doSubSub()
+}
 
+void doParameter():
+{}
+{
+	numberExpression()" "classExpression()
+}
 
 void numberExpression() :
-{
-}
+{}
 {
 	<NUMBER>
 	{ 
@@ -103,23 +112,29 @@ void numberExpression() :
 	}#Number
 }
 
-void tableExpression() :
-{
-}
-{
-	<TABLE>
-	{ 
-		jjtThis.data.put("value",token.image);
-	}#Table
-}
-
-void assign() :
+void classExpression() :
 {}
 {
-	prop()" = "val()
+	<CLASS>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#Class
+}
+
+void doSubSub():
+{}
+{
+	< SUCH >" "assignExpression()
+}
+
+void assignExpression() :
+{}
+{
+	Property()" = "Value()
 	
 }
-void prop() :
+
+void Property() :
 {}
 {
 	<PROP>
@@ -128,7 +143,7 @@ void prop() :
 	}#Property
 }
 
-void val() :
+void Value() :
 {}
 {
 	<VALUE>
@@ -136,3 +151,4 @@ void val() :
 		jjtThis.data.put("value",token.image);
 	}#Value
 }
+
