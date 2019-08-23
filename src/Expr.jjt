@@ -2,6 +2,8 @@ options {
    MULTI=true;
    VISITOR=true;
    NODE_DEFAULT_VOID=true;
+   VISITOR_DATA_TYPE = "String"; // (default "Object")
+   VISITOR_RETURN_TYPE = "String"; // (default "Object")
    NODE_EXTENDS="BaseNode";
 }
 
@@ -108,7 +110,7 @@ void numberExpression() :
 {
 	<NUMBER>
 	{ 
-		jjtThis.data.put("value",new Integer(Integer.parseInt(token.image)));
+		jjtThis.data.put("value",token.image);
 	}#Number
 }
 

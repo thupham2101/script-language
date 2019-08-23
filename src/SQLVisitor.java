@@ -13,87 +13,55 @@ import net.sf.jsqlparser.statement.insert.Insert;
 public class SQLVisitor implements ExpressionParserVisitor{
 
     @Override
-    public Object visit(SimpleNode node, Object data) {
-        if(node instanceof ASTStatement) {
-            return visit((ASTStatement) node, data);
-        }
-        else if(node instanceof ASTstart) {
-            return visit((ASTstart) node, data);
-        }
-        else if(node instanceof ASTaddStatement) {
-            return visit((ASTaddStatement) node, data);
-        }
-        else if(node instanceof ASTdoStatement) {
-            return visit((ASTdoStatement) node, data);
-        }
-        else if(node instanceof ASTClass) {
-            return visit((ASTClass) node, data);
-        }
-        else if(node instanceof ASTQuantifier) {
-            return visit((ASTQuantifier) node, data);
-        }
-        else if(node instanceof ASTProperty) {
-            return visit((ASTProperty) node, data);
-        }
-        else if(node instanceof ASTValue) {
-            return visit((ASTValue) node, data);
-        }
-        else
-            return visit((ASTNumber) node, data);
+    public String visit(SimpleNode node, String data) {
+        return node.jjtAccept(this, data);
     }
 
     @Override
-    public Object visit(ASTstart node, Object data) {
-        String output = (String) data;
-        for(Node child : node.children) {
-            SimpleNode simpleChild = (SimpleNode) child; 
-            output = output
-                    .concat((String) visit(simpleChild, output))
-                    .concat("\n");
+    public String visit(ASTstart node, String data) {
+        for(int i = 0; i < node.jjtGetNumChildren(); i++) {
+            data = node.jjtGetChild(i).jjtAccept(this, data);
         }
-        return output;
+        return data;
     }
 
     @Override
-    public Object visit(ASTStatement node, Object data) {
-        SimpleNode simpleChild = (SimpleNode) node.jjtGetChild(0);
-        return visit(simpleChild, data);
+    public String visit(ASTStatement node, String data) {
+        return node.jjtGetChild(0).jjtAccept(this, data);
     }
 
     @Override
-    public Object visit(ASTaddStatement node, Object data) {
-        Integer number = (Integer) visit((SimpleNode) node.jjtGetChild(0), data);
-        String table = (String) visit((SimpleNode) node.jjtGetChild(1), data);
-        String output = (String) data;
+    public String visit(ASTaddStatement node, String data) {
+        Integer number = Integer.parseInt(node.jjtGetChild(0).jjtAccept(this, data));
+        String table = node.jjtGetChild(1).jjtAccept(this, data);
         for(int i = 0; i < number; i++) {
             Insert insert = new Insert();
             insert.setTable(new Table(null,table));
             ExpressionList expList = new ExpressionList();
             expList.setExpressions(new ArrayList<Expression>());
             insert.setItemsList(expList);
-            output = output.concat(insert.toString()).concat(";\n");
+            data = data.concat(insert.toString()).concat(";\n");
         }
-        return output;
+        return data;
     }
     
     @Override
-    public Object visit(ASTNumber node, Object data) {
-        return node.data.get("value");
+    public String visit(ASTNumber node, String data) {
+        return (String) node.data.get("value");
     }
 
     @Override
-    public Object visit(ASTClass node, Object data) {
-        return node.data.get("value");
+    public String visit(ASTClass node, String data) {
+        return (String) node.data.get("value");
     }
 
     @Override
-    public Object visit(ASTdoStatement node, Object data) {
-        String quantifier = (String) visit((SimpleNode) node.jjtGetChild(0), data);
-        Integer number = (Integer) visit((SimpleNode) node.jjtGetChild(1), data);
-        String table = (String) visit((SimpleNode) node.jjtGetChild(2), data);
-        String property = (String) visit((SimpleNode) node.jjtGetChild(3), data);
-        String value = (String) visit((SimpleNode) node.jjtGetChild(4), data);
-        String output = (String) data;
+    public String visit(ASTdoStatement node, String data) {
+        String quantifier = node.jjtGetChild(0).jjtAccept(this, data);
+        Integer number = Integer.parseInt(node.jjtGetChild(1).jjtAccept(this, data));
+        String table = node.jjtGetChild(2).jjtAccept(this, data);
+        String property = node.jjtGetChild(3).jjtAccept(this, data);
+        String value = node.jjtGetChild(4).jjtAccept(this, data);
         if("EXACTLY".equals(quantifier)) {
             MyUpdate update = new MyUpdate();
             Table tgtTable = new Table(null, table);
@@ -104,7 +72,7 @@ public class SQLVisitor implements ExpressionParserVisitor{
             whereExp.setLeftExpression(new Column(tgtTable, property));
             whereExp.setRightExpression(new StringValue(value));
             update.setWhere(whereExp);
-            return output.concat(update.toString()).concat(";\n");
+            return data.concat(update.toString()).concat(";\n");
         }
         else if("AT MOST".equals(quantifier)) {
             return "";
@@ -115,18 +83,18 @@ public class SQLVisitor implements ExpressionParserVisitor{
     }
 
     @Override
-    public Object visit(ASTQuantifier node, Object data) {
-        return node.data.get("value");
+    public String visit(ASTQuantifier node, String data) {
+        return (String) node.data.get("value");
     }
 
     @Override
-    public Object visit(ASTProperty node, Object data) {
-        return node.data.get("value");
+    public String visit(ASTProperty node, String data) {
+        return (String) node.data.get("value");
     }
     
     @Override
-    public Object visit(ASTValue node, Object data) {
-        return node.data.get("value");
+    public String visit(ASTValue node, String data) {
+        return (String) node.data.get("value");
     }
 //    
 
