@@ -10,6 +10,22 @@ import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.insert.Insert;
 
+class ScriptingProcedure {
+    public static final String ADD = "DELIMITER $$\r\n" + 
+            "DROP PROCEDURE IF EXISTS createInstances $$\r\n" + 
+            "CREATE PROCEDURE createInstances(n INT)\r\n" + 
+            "BEGIN\r\n" + 
+            "DECLARE var INT;\r\n" + 
+            "SET var = 0;\r\n" + 
+            "WHILE var < n DO\r\n" + 
+            "INSERT INTO %s VALUES ();\r\n" + 
+            "SET var = var + 1;\r\n" + 
+            "END WHILE;\r\n" + 
+            "END $$\r\n" + 
+            "DELIMITER ;\r\n" + 
+            "call createInstances(%d);";
+}
+
 public class SQLVisitor implements ExpressionParserVisitor{
 
     @Override
@@ -34,14 +50,7 @@ public class SQLVisitor implements ExpressionParserVisitor{
     public String visit(ASTaddStatement node, String data) {
         Integer number = Integer.parseInt(node.jjtGetChild(0).jjtAccept(this, data));
         String table = node.jjtGetChild(1).jjtAccept(this, data);
-        for(int i = 0; i < number; i++) {
-            Insert insert = new Insert();
-            insert.setTable(new Table(null,table));
-            ExpressionList expList = new ExpressionList();
-            expList.setExpressions(new ArrayList<Expression>());
-            insert.setItemsList(expList);
-            data = data.concat(insert.toString()).concat(";\n");
-        }
+        data = data.concat(String.format(ScriptingProcedure.ADD, table, number));
         return data;
     }
     
