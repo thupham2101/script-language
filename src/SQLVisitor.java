@@ -28,7 +28,7 @@ class ScriptingProcedure {
             "IF(preSize > n) THEN\r\n" +
             "BEGIN\r\n" +
             "DECLARE x INT;\r\n" + 
-            "SET x = n - preSize;\r\n" + 
+            "SET x = preSize - n;\r\n" + 
             "UPDATE %2$s \r\n" + 
             "SET %4$s \r\n" + 
             "WHERE %3$s \r\n" + 
@@ -40,7 +40,7 @@ class ScriptingProcedure {
             "DECLARE var INT;\r\n" + 
             "SET x = n - preSize;\r\n" + 
             "SET var = 0;\r\n" + 
-            "WHILE var < n DO\r\n" + 
+            "WHILE var < x DO\r\n" + 
             "INSERT INTO %2$s (%5$s) VALUES (%6$s);\r\n" + 
             "SET var = var + 1;\r\n" + 
             "END WHILE;\r\n" + 
@@ -49,6 +49,52 @@ class ScriptingProcedure {
             "END $$\r\n" + 
             "DELIMITER ;\r\n" + 
             "call doExactly(%d);";  
+    public static final String DO_AT_LEAST =
+            "DELIMITER $$\r\n" + 
+            "DROP PROCEDURE IF EXISTS doAtLeast $$\r\n" + 
+            "CREATE PROCEDURE doAtLeast(n INT)\r\n" + 
+            "BEGIN\r\n" + 
+            "DECLARE preSize INT;\r\n" + 
+            "SELECT COUNT(*) into preSize\r\n" + 
+            "FROM %2$s\r\n" + 
+            "WHERE %3$s;\r\n" + 
+            "IF(preSize < n) THEN\r\n" + 
+            "BEGIN\r\n" + 
+            "DECLARE x INT;\r\n" + 
+            "DECLARE var INT;\r\n" + 
+            "SET x = n - preSize;\r\n" + 
+            "SET var = 0;\r\n" + 
+            "WHILE var < x DO\r\n" + 
+            "INSERT INTO %2$s (%5$s) VALUES (%6$s);\r\n" + 
+            "SET var = var + 1;\r\n" + 
+            "END WHILE;\r\n" + 
+            "END;\r\n" + 
+            "END IF;\r\n" + 
+            "END $$\r\n" + 
+            "DELIMITER ;\r\n" + 
+            "call doAtLeast(%d);";
+    public static final String DO_AT_MOST =
+            "DELIMITER $$\r\n" + 
+            "DROP PROCEDURE IF EXISTS doAtMost $$\r\n" + 
+            "CREATE PROCEDURE doAtMost(n INT)\r\n" + 
+            "BEGIN\r\n" + 
+            "DECLARE preSize INT;\r\n" + 
+            "SELECT COUNT(*) into preSize\r\n" + 
+            "FROM %2$s\r\n" + 
+            "WHERE %3$s;\r\n" + 
+            "IF(preSize > n) THEN\r\n" + 
+            "BEGIN\r\n" + 
+            "DECLARE x INT;\r\n" + 
+            "SET x = preSize - n;\r\n" + 
+            "UPDATE %2$s \r\n" + 
+            "SET %4$s \r\n" + 
+            "WHERE %3$s\r\n" + 
+            "LIMIT x;\r\n" + 
+            "END;\r\n" + 
+            "END IF;\r\n" + 
+            "END $$\r\n" + 
+            "DELIMITER ;\r\n" + 
+            "call doAtMost(%d);";
 }
 
 public class SQLVisitor implements ExpressionParserVisitor{
@@ -108,22 +154,18 @@ public class SQLVisitor implements ExpressionParserVisitor{
         String valueList = StringUtils.join(values, ",");
         String propertyNULLAssignment = StringUtils.setPropertiesToNull(properties);
         String propertyValueAssignment = StringUtils.setPropertiesToValues(properties, values);
-        if("EXACTLY".equals(quantifier)) {
-            data = data.concat(String.format(
-                    ScriptingProcedure.DO_EXACTLY, number,
-                    table,
-                    propertyValueAssignment,
-                    propertyNULLAssignment,
-                    propertyList,
-                    valueList)).concat("\n");
-            return data;
-        }
-        else if("AT MOST".equals(quantifier)) {
-            return "";
-        }
-        else {
-            return "";
-        }
+        String procedure = "EXACTLY".equals(quantifier) ? ScriptingProcedure.DO_EXACTLY
+                : "AT MOST".equals(quantifier) ? ScriptingProcedure.DO_AT_MOST
+                        : ScriptingProcedure.DO_AT_LEAST;
+        data = data.concat(String.format(
+                procedure, number,
+                table,
+                propertyValueAssignment,
+                propertyNULLAssignment,
+                propertyList,
+                valueList)).concat("\n");
+        return data;
+        
     }
 
     @Override
