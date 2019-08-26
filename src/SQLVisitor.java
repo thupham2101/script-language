@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 class ScriptingProcedure {
-    public static final String ADD = 
+    public static final String ADD_N = 
             "DELIMITER $$\r\n" + 
             "DROP PROCEDURE IF EXISTS createInstances $$\r\n" + 
             "CREATE PROCEDURE createInstances(n INT)\r\n" + 
@@ -16,7 +16,7 @@ class ScriptingProcedure {
             "END $$\r\n" + 
             "DELIMITER ;\r\n" + 
             "call createInstances(%d);";
-    public static final String DO_EXACTLY = 
+    public static final String DO_EXACTLY_N = 
             "DELIMITER $$\r\n" + 
             "DROP PROCEDURE IF EXISTS doExactly $$\r\n" + 
             "CREATE PROCEDURE doExactly(n INT)\r\n" + 
@@ -49,7 +49,7 @@ class ScriptingProcedure {
             "END $$\r\n" + 
             "DELIMITER ;\r\n" + 
             "call doExactly(%d);";  
-    public static final String DO_AT_LEAST =
+    public static final String DO_AT_LEAST_N =
             "DELIMITER $$\r\n" + 
             "DROP PROCEDURE IF EXISTS doAtLeast $$\r\n" + 
             "CREATE PROCEDURE doAtLeast(n INT)\r\n" + 
@@ -73,7 +73,7 @@ class ScriptingProcedure {
             "END $$\r\n" + 
             "DELIMITER ;\r\n" + 
             "call doAtLeast(%d);";
-    public static final String DO_AT_MOST =
+    public static final String DO_AT_MOST_N =
             "DELIMITER $$\r\n" + 
             "DROP PROCEDURE IF EXISTS doAtMost $$\r\n" + 
             "CREATE PROCEDURE doAtMost(n INT)\r\n" + 
@@ -95,6 +95,33 @@ class ScriptingProcedure {
             "END $$\r\n" + 
             "DELIMITER ;\r\n" + 
             "call doAtMost(%d);";
+    public static final String UPDATE_ALL = 
+            "DELIMITER $$\r\n" + 
+            "DROP PROCEDURE IF EXISTS updatePropertyAll $$\r\n" + 
+            "CREATE PROCEDURE updatePropertyAll()\r\n" + 
+            "BEGIN\r\n" + 
+            "UPDATE %1$s\r\n" + 
+            "SET %2$s\r\n" + 
+            "%3$s;\r\n" + 
+            "END $$\r\n" + 
+            "DELIMITER ;\r\n" + 
+            "call updateProperty();";
+    public static final String UPDATE_N = 
+            "DELIMITER $$\r\n" + 
+            "DROP PROCEDURE IF EXISTS updateProperty $$\r\n" + 
+            "CREATE PROCEDURE updateProperty(n INT)\r\n" + 
+            "BEGIN\r\n" + 
+            "DECLARE preSize INT;\r\n" + 
+            "SELECT COUNT(*) INTO preSize\r\n" + 
+            "FROM %2$s\r\n" + 
+            "WHERE %3$s NOT (%4$s);\r\n" + 
+            "IF(preSize < n) RETURN;\r\n" + 
+            "UPDATE %2$s\r\n" + 
+            "SET %4$s\r\n" + 
+            "WHERE %3$s NOT %4$s;\r\n" + 
+            "END $$\r\n" + 
+            "DELIMITER ;\r\n" + 
+            "call updateProperty(%d);";
 }
 
 public class SQLVisitor implements ExpressionParserVisitor{
@@ -121,7 +148,7 @@ public class SQLVisitor implements ExpressionParserVisitor{
     public String visit(ASTaddStatement node, String data) {
         Integer number = Integer.parseInt(node.jjtGetChild(0).jjtAccept(this, data));
         String table = node.jjtGetChild(1).jjtAccept(this, data);
-        data = data.concat(String.format(ScriptingProcedure.ADD, table, number)).concat("\n");
+        data = data.concat(String.format(ScriptingProcedure.ADD_N, table, number)).concat("\n");
         return data;
     }
     
@@ -154,9 +181,9 @@ public class SQLVisitor implements ExpressionParserVisitor{
         String valueList = StringUtils.join(values, ",");
         String propertyNULLAssignment = StringUtils.setPropertiesToNull(properties);
         String propertyValueAssignment = StringUtils.setPropertiesToValues(properties, values);
-        String procedure = "EXACTLY".equals(quantifier) ? ScriptingProcedure.DO_EXACTLY
-                : "AT MOST".equals(quantifier) ? ScriptingProcedure.DO_AT_MOST
-                        : ScriptingProcedure.DO_AT_LEAST;
+        String procedure = "EXACTLY".equals(quantifier) ? ScriptingProcedure.DO_EXACTLY_N
+                : "AT MOST".equals(quantifier) ? ScriptingProcedure.DO_AT_MOST_N
+                        : ScriptingProcedure.DO_AT_LEAST_N;
         data = data.concat(String.format(
                 procedure, number,
                 table,
