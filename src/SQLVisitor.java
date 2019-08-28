@@ -231,9 +231,13 @@ public class SQLVisitor implements ExpressionParserVisitor{
 	        String valueList = StringUtils.join(values, ",");
 	        String propertyNULLAssignment = StringUtils.setPropertiesToNull(properties);
 	        String propertyValueAssignment = StringUtils.setPropertiesToValues(properties, values);
-//	        String procedure = "*".equals(quantity) ? ScriptingProcedure.UPDATE_ALL
-//	                        : 	{ Integer number = Integer.parseInt(quantity);
-//	                        	ScriptingProcedure.UPDATE_N;}
+	        String procedure = null;
+	        if("*".equals(quantity)) {
+	            procedure = ScriptingProcedure.UPDATE_ALL;
+	        } else {
+	            procedure = ScriptingProcedure.UPDATE_N;
+	            Integer number = Integer.parseInt(quantity);
+	        }
 //	        data = data.concat(String.format(
 //	                procedure, quantity,
 //	                table,
