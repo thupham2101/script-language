@@ -1,6 +1,8 @@
 import java.util.ArrayList;
 import java.util.List;
 
+//import com.sun.tools.javac.util.StringUtils;
+
 class ScriptingProcedure {
     public static final String ADD_N = 
             "DELIMITER $$\r\n" + 
@@ -171,8 +173,8 @@ public class SQLVisitor implements ExpressionParserVisitor{
         List<String> properties = new ArrayList<String>();
         List<String> values = new ArrayList<String>();
         while(propertyStartPivot < node.jjtGetNumChildren()) {
-            String property = node.jjtGetChild(3).jjtAccept(this, data);
-            String value = node.jjtGetChild(4).jjtAccept(this, data);
+            String property = node.jjtGetChild(propertyStartPivot).jjtAccept(this, data);
+            String value = node.jjtGetChild(propertyStartPivot+1).jjtAccept(this, data);
             properties.add(property);
             values.add(value);
             propertyStartPivot += 2;
@@ -210,6 +212,46 @@ public class SQLVisitor implements ExpressionParserVisitor{
         return (String) node.data.get("value");
     }
 //    
+
+	@Override
+	public String visit(ASTupdateStatement node, String data) {
+		 String quantity = node.jjtGetChild(0).jjtAccept(this, data);
+	        String table = node.jjtGetChild(1).jjtAccept(this, data);
+	        int propertyStartPivot = 2;
+	        List<String> properties = new ArrayList<String>();
+	        List<String> values = new ArrayList<String>();
+	        while(propertyStartPivot < node.jjtGetNumChildren()) {
+	            String property = node.jjtGetChild(propertyStartPivot).jjtAccept(this, data);
+	            String value = node.jjtGetChild(propertyStartPivot+1).jjtAccept(this, data);
+	            properties.add(property);
+	            values.add(value);
+	            propertyStartPivot += 2;
+	        }
+	        String propertyList = StringUtils.join(properties, ",");
+	        String valueList = StringUtils.join(values, ",");
+	        String propertyNULLAssignment = StringUtils.setPropertiesToNull(properties);
+	        String propertyValueAssignment = StringUtils.setPropertiesToValues(properties, values);
+//	        String procedure = "*".equals(quantity) ? ScriptingProcedure.UPDATE_ALL
+//	                        : 	{ Integer number = Integer.parseInt(quantity);
+//	                        	ScriptingProcedure.UPDATE_N;}
+//	        data = data.concat(String.format(
+//	                procedure, quantity,
+//	                table,
+//	                propertyValueAssignment,
+//	                propertyNULLAssignment,
+//	                propertyList,
+//	                valueList)).concat("\n");	      
+
+	        return data;
+	}
+
+	@Override
+	public String visit(ASTAll node, String data) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	
 
 
 }

@@ -32,7 +32,11 @@ TOKEN : //keywords
 {
      	< QUANTIFIER: "EXACTLY" | "AT MOST" | "AT LEAST" >
     |   < SUCH: "SUCH THAT">
+    |   < WHERE: "WHERE" >
+	|   < AND: "AND" >
     | 	< NUMBER : (<DIGIT>)+  >
+//	|   < CLASS: (< STRING >)+ >
+	|   < ALL: "*" >
 	|   < CLASS: "Car" | "Person" >
 	|   < PROP: "color" | "name" >
 	|   < VALUE: "'white'" | "'no color'" >
@@ -54,7 +58,8 @@ void statement() #Statement:
 {}
 {
 		addExpression()
-	|   doExpression()	
+	|   doExpression()
+	|	updateStatement()
 }
 
 //   ADD EXPRESSION
@@ -126,7 +131,7 @@ void classExpression() :
 void doSubSub():
 {}
 {
-	< SUCH >" "assignExpression()
+	< SUCH >" "assignExpression()(" "< AND >" "assignExpression())*
 }
 
 void assignExpression() :
@@ -154,3 +159,61 @@ void Value() :
 	}#Value
 }
 
+/*
+==========================
+      UPDATE EXPRESSION   
+==========================
+*/
+
+void updateStatement() #updateStatement:
+{}
+{
+  < UPDATE >" "updateStructure()";"
+}
+
+
+void updateStructure():
+{}
+{
+	updateQuantity()" "updateExpression()
+}
+
+void updateQuantity():
+{}
+{
+	allExpression() | numberExpression()
+}
+
+void allExpression() :
+{}
+{
+	<ALL>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#All
+}
+
+void updateExpression():
+{}
+{
+	classExpression()" "updateList()
+}
+
+void updateList():
+{}
+{
+	updateAssignmentList()(< WHERE >condition())*
+}
+
+
+void updateAssignmentList():
+{}
+{
+	assignExpression()" "(< AND >" "assignExpression()" ")*
+}
+
+void condition():
+{}
+{
+	" "assignExpression()
+}
