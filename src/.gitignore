@@ -55,3 +55,7 @@
 /StringUtils.class
 /ASTAll.class
 /ASTupdateStatement.class
+/ASTpropCondition.java
+/ASTvalCondition.java
+/ASTpropCondition.class
+/ASTvalCondition.class

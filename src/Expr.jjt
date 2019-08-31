@@ -32,14 +32,14 @@ TOKEN : //keywords
 {
      	< QUANTIFIER: "EXACTLY" | "AT MOST" | "AT LEAST" >
     |   < SUCH: "SUCH THAT">
-    |   < WHERE: "WHERE" >
-	|   < AND: "AND" >
+    |   < WHERE: " WHERE" >
+	|   < AND: " AND" >
     | 	< NUMBER : (<DIGIT>)+  >
 //	|   < CLASS: (< STRING >)+ >
 	|   < ALL: "*" >
 	|   < CLASS: "Car" | "Person" >
-	|   < PROP: "color" | "name" >
-	|   < VALUE: "'white'" | "'no color'" >
+	|   < PROP: "color" | "name" | "brand">
+	|   < VALUE: "'white'" | "'no color'"|"'BMW'">
 }
 
 
@@ -131,7 +131,7 @@ void classExpression() :
 void doSubSub():
 {}
 {
-	< SUCH >" "assignExpression()(" "< AND >" "assignExpression())*
+	< SUCH >" "assignExpression()(< AND >" "assignExpression())*
 }
 
 void assignExpression() :
@@ -202,18 +202,36 @@ void updateExpression():
 void updateList():
 {}
 {
-	updateAssignmentList()(< WHERE >condition())*
+  	updateAssignmentList()
+  	(< WHERE >condition()(< AND >condition())*)?
 }
-
 
 void updateAssignmentList():
 {}
 {
-	assignExpression()" "(< AND >" "assignExpression()" ")*
+	assignExpression()(< AND >" "assignExpression())*
 }
 
 void condition():
 {}
 {
-	" "assignExpression()
+	" "propCondition()" = "valCondition()
+}
+
+void propCondition() :
+{}
+{
+	<PROP>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#propCondition
+}
+
+void valCondition() :
+{}
+{
+	<VALUE>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#valCondition
 }
