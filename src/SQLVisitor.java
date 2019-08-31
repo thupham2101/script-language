@@ -102,9 +102,9 @@ class ScriptingProcedure {
             "DROP PROCEDURE IF EXISTS updatePropertyAll $$\r\n" + 
             "CREATE PROCEDURE updatePropertyAll()\r\n" + 
             "BEGIN\r\n" + 
-            "UPDATE %1$s\r\n" + 
-            "SET %2$s\r\n" + 
-            "%3$s;\r\n" + 
+            "UPDATE %2$s\r\n" + // %1: Table
+            "SET %3$s\r\n" +  // %2: color = 'black'
+            "WHERE %4$s;\r\n" + // %3: brand = 'BMW'
             "END $$\r\n" + 
             "DELIMITER ;\r\n" + 
             "call updateProperty();";
@@ -115,12 +115,16 @@ class ScriptingProcedure {
             "BEGIN\r\n" + 
             "DECLARE preSize INT;\r\n" + 
             "SELECT COUNT(*) INTO preSize\r\n" + 
-            "FROM %2$s\r\n" + 
-            "WHERE %3$s NOT (%4$s);\r\n" + 
-            "IF(preSize < n) RETURN;\r\n" + 
+            "FROM %2$s\r\n" + // from Table
+            "WHERE %4$s AND %5$s NOT IN (%6$s);\r\n" + 
+            "IF(preSize >= n) THEN\r\n" + 
+            "BEGIN\r\n" + 
             "UPDATE %2$s\r\n" + 
-            "SET %4$s\r\n" + 
-            "WHERE %3$s NOT %4$s;\r\n" + 
+            "SET %3$s\r\n" + // color = 'white'
+            "WHERE %4$s AND %5$s AND NOT (%6$s);\r\n" +  // where brand = 'BMW' NOT color = 'white'
+            "LIMIT n;\r\n" + 
+            "END;\r\n" + 
+            "END IF;\r\n" + 
             "END $$\r\n" + 
             "DELIMITER ;\r\n" + 
             "call updateProperty(%d);";
@@ -182,7 +186,9 @@ public class SQLVisitor implements ExpressionParserVisitor{
         String propertyList = StringUtils.join(properties, ",");
         String valueList = StringUtils.join(values, ",");
         String propertyNULLAssignment = StringUtils.setPropertiesToNull(properties);
+        
         String propertyValueAssignment = StringUtils.setPropertiesToValues(properties, values);
+     // multiple value. color = 'white', brand = 'BMW'
         String procedure = "EXACTLY".equals(quantifier) ? ScriptingProcedure.DO_EXACTLY_N
                 : "AT MOST".equals(quantifier) ? ScriptingProcedure.DO_AT_MOST_N
                         : ScriptingProcedure.DO_AT_LEAST_N;
@@ -191,7 +197,7 @@ public class SQLVisitor implements ExpressionParserVisitor{
                 table,
                 propertyValueAssignment,
                 propertyNULLAssignment,
-                propertyList,
+                propertyList, // is used for insert multiple
                 valueList)).concat("\n");
         return data;
         
@@ -218,9 +224,10 @@ public class SQLVisitor implements ExpressionParserVisitor{
 		 String quantity = node.jjtGetChild(0).jjtAccept(this, data);
 	        String table = node.jjtGetChild(1).jjtAccept(this, data);
 	        int propertyStartPivot = 2;
+	        
 	        List<String> properties = new ArrayList<String>();
 	        List<String> values = new ArrayList<String>();
-	        while(propertyStartPivot < node.jjtGetNumChildren()) {
+	        while(node.jjtGetChild(propertyStartPivot) instanceof ASTProperty) {
 	            String property = node.jjtGetChild(propertyStartPivot).jjtAccept(this, data);
 	            String value = node.jjtGetChild(propertyStartPivot+1).jjtAccept(this, data);
 	            properties.add(property);
@@ -229,29 +236,58 @@ public class SQLVisitor implements ExpressionParserVisitor{
 	        }
 	        String propertyList = StringUtils.join(properties, ",");
 	        String valueList = StringUtils.join(values, ",");
-	        String propertyNULLAssignment = StringUtils.setPropertiesToNull(properties);
+	//      String propertyNULLAssignment = StringUtils.setPropertiesToNull(properties);
 	        String propertyValueAssignment = StringUtils.setPropertiesToValues(properties, values);
-//	        String procedure = "*".equals(quantity) ? ScriptingProcedure.UPDATE_ALL
-//	                        : 	{ Integer number = Integer.parseInt(quantity);
-//	                        	ScriptingProcedure.UPDATE_N;}
-//	        data = data.concat(String.format(
-//	                procedure, quantity,
-//	                table,
-//	                propertyValueAssignment,
-//	                propertyNULLAssignment,
-//	                propertyList,
-//	                valueList)).concat("\n");	      
-
+	        
+	      //  int conditionPivot = 4;
+	        List<String> propCondition = new ArrayList<String>();
+	        List<String> valCondition = new ArrayList<String>();
+	        while(propertyStartPivot < node.jjtGetNumChildren()) {
+	            String propC = node.jjtGetChild(propertyStartPivot).jjtAccept(this, data);
+	            String valC = node.jjtGetChild(propertyStartPivot+1).jjtAccept(this, data);
+	            propCondition.add(propC);
+	            valCondition.add(valC);
+	            propertyStartPivot += 2;
+	        }
+	 //       String propConList = StringUtils.join(propCondition, ",");
+	 //       String valConList = StringUtils.join(valCondition, ",");
+	  //      String propConNULLAssignment = StringUtils.setPropertiesToNull(propCondition);
+	        String propConValueAssignment = StringUtils.setPropertiesToValues(propCondition, valCondition);
+	        String procedure = null;
+	        Integer number = null;
+	        if ("*".equals(quantity)) {
+	        	procedure = ScriptingProcedure.UPDATE_ALL;
+	        }
+	        else {
+            	procedure = ScriptingProcedure.UPDATE_N;
+	        	number = Integer.parseInt(quantity);
+	        }
+	       
+			data = data.concat(String.format(
+	                procedure, number,
+	                table,
+	                propertyValueAssignment,
+	                propConValueAssignment,
+	                propertyList,
+	                valueList)).concat("\n");	 
 	        return data;
 	}
 
 	@Override
 	public String visit(ASTAll node, String data) {
-		// TODO Auto-generated method stub
-		return null;
+        return (String) node.data.get("value");
 	}
 
-	
+	@Override
+	public String visit(ASTpropCondition node, String data) {
+        return (String) node.data.get("value");
+	}
+
+	@Override
+	public String visit(ASTvalCondition node, String data) {
+        return (String) node.data.get("value");
+	}
+
 
 
 }
