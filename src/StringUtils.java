@@ -27,7 +27,7 @@ public class StringUtils {
         }
     }
 
-    public static String setPropertiesToValues(List<String> properties, List<String> values) {
+    public static String setPropertiesToValues(List<String> properties, List<String> values, String seperator) {
         if(properties.isEmpty())
             return "";
         else {
@@ -35,7 +35,7 @@ public class StringUtils {
             for(int i = 1; i < properties.size(); i++) {
                 String nextProperty = properties.get(i);
                 String nextValue = values.get(i);
-                result = result.concat(",").concat(nextProperty).concat("=").concat(nextValue);
+                result = result.concat(" ").concat(seperator).concat(" ").concat(nextProperty).concat("=").concat(nextValue);
             }
             return result;
         }

@@ -5,6 +5,8 @@ options {
    VISITOR_DATA_TYPE = "String"; // (default "Object")
    VISITOR_RETURN_TYPE = "String"; // (default "Object")
    NODE_EXTENDS="BaseNode";
+   NODE_PREFIX="SSL";
+   IGNORE_CASE = true; // (default false)
 }
 
 PARSER_BEGIN(ExpressionParser)
@@ -22,74 +24,86 @@ SKIP :
 
 TOKEN : /* action */
 {
-	   < ADD: "add" | "ADD" >
-	|  < DO: "do" | "DO">
-	| < UPDATE : "update" | "UPDATE" >
-	| < LINK : "link" | "LINK" >
+	   < ADD: (" ")*"ADD" >
+	|  < DO: (" ")*"DO">
+	|  < UPDATE : (" ")*"UPDATE" >
+	|  < LINK : (" ")*"LINK" >
+	|  < QUANTIFIER: "EXACTLY" | "AT MOST" | "AT LEAST" >
+    |  < SUCH_THAT: "SUCH THAT">
+    |  < WHERE: (" ")+"WHERE" >
+	|  < AND: (" ")+"AND" >
+	|   < ALL: "*" >
+	| 	< EOC		: (" ")*";" >
+	| 	< ASSIGN	: (" ")*"="(" ")* >
 }
 
 TOKEN : //keywords
 {
-     	< QUANTIFIER: "EXACTLY" | "AT MOST" | "AT LEAST" >
-    |   < SUCH: "SUCH THAT">
-    |   < WHERE: " WHERE" >
-	|   < AND: " AND" >
-    | 	< NUMBER : (<DIGIT>)+  >
-//	|   < CLASS: (< STRING >)+ >
-	|   < ALL: "*" >
-	|   < CLASS: "Car" | "Person" >
-	|   < PROP: "color" | "name" | "brand">
-	|   < VALUE: "'white'" | "'no color'"|"'BMW'">
+     < NUMBER : (<DIGIT>)+  >
+	|   < STRING: (< LETTER >)+ >
+	| 	< SPACES	: (< SPACE >)+ >
 }
 
 
 TOKEN :
 {
-	  <#DIGIT: ["0"-"9"]>
+	  < #DIGIT				: ["0"-"9"]>
+	| < #LETTER				: ["A"-"Z", "a"-"z", "'", "-"] >
+	| < #SPACE				: " " >
+	
 }
 
-ASTstart start() #start:{}
+SSLStart parse() #Start:{}
 {
-  (statement())+
+  (STATEMENT())+
   { return jjtThis; }
 }
 
-void statement() #Statement:
+void STATEMENT():
 {}
 {
-		addExpression()
-	|   doExpression()
-	|	updateStatement()
+		ADD_EXPRESSION()
+	|   DO_EXPRESSION()
+	|	UPDATE_EXPRESSION()
 }
 
-//   ADD EXPRESSION
-void addExpression() #addStatement:
+void ADD_EXPRESSION() #AddStatement:
 {}
 {
-  < ADD >" "addParameter()";"
+  < ADD > < SPACES > CLASS_NUM_PARAMETER() < EOC >
 }
 
-void addParameter() :
+void DO_EXPRESSION() #DoStatement:
 {}
 {
-	numberExpression()" "classExpression()
+  < DO > < SPACES > DO_BODY() < EOC >
 }
 
-//   DO EXPRESSION
-void doExpression() #doStatement:
+void UPDATE_EXPRESSION() #UpdateStatement:
 {}
 {
-  < DO >" "doString()";"
+  < UPDATE > < SPACES > UPDATE_BODY() < EOC >
 }
 
-
-void doString():
+void CLASS_NUM_PARAMETER() :
 {}
 {
-	quantifier()" "doSubString()
+	NUMBER_QUANTITY() < SPACES > CLASS_NAME()
 }
 
-void quantifier():
+void CLASS_ALL_PARAMETER() :
+{}
+{
+	ALL_QUANTITY() < SPACES > CLASS_NAME()
+}
+
+void DO_BODY():
+{}
+{
+	QUANTIFIER_ENUM() < SPACES > DO_PARAMETER()
+}
+
+void QUANTIFIER_ENUM():
 {}
 {
 	<QUANTIFIER>
@@ -98,19 +112,15 @@ void quantifier():
 	}#Quantifier
 }
 
-void doSubString():
+void DO_PARAMETER():
 {}
 {
-	doParameter()" "doSubSub()
+	CLASS_NUM_PARAMETER() < SPACES > DO_ASSIGNMENT()
 }
 
-void doParameter():
-{}
-{
-	numberExpression()" "classExpression()
-}
 
-void numberExpression() :
+
+void NUMBER_QUANTITY() :
 {}
 {
 	<NUMBER>
@@ -119,72 +129,7 @@ void numberExpression() :
 	}#Number
 }
 
-void classExpression() :
-{}
-{
-	<CLASS>
-	{ 
-		jjtThis.data.put("value",token.image);
-	}#Class
-}
-
-void doSubSub():
-{}
-{
-	< SUCH >" "assignExpression()(< AND >" "assignExpression())*
-}
-
-void assignExpression() :
-{}
-{
-	Property()" = "Value()
-	
-}
-
-void Property() :
-{}
-{
-	<PROP>
-	{ 
-		jjtThis.data.put("value",token.image);
-	}#Property
-}
-
-void Value() :
-{}
-{
-	<VALUE>
-	{ 
-		jjtThis.data.put("value",token.image);
-	}#Value
-}
-
-/*
-==========================
-      UPDATE EXPRESSION   
-==========================
-*/
-
-void updateStatement() #updateStatement:
-{}
-{
-  < UPDATE >" "updateStructure()";"
-}
-
-
-void updateStructure():
-{}
-{
-	updateQuantity()" "updateExpression()
-}
-
-void updateQuantity():
-{}
-{
-	allExpression() | numberExpression()
-}
-
-void allExpression() :
+void ALL_QUANTITY() :
 {}
 {
 	<ALL>
@@ -193,45 +138,68 @@ void allExpression() :
 	}#All
 }
 
-void updateExpression():
+void CLASS_NAME() :
 {}
 {
-	classExpression()" "updateList()
-}
-
-void updateList():
-{}
-{
-  	updateAssignmentList()
-  	(< WHERE >condition()(< AND >condition())*)?
-}
-
-void updateAssignmentList():
-{}
-{
-	assignExpression()(< AND >" "assignExpression())*
-}
-
-void condition():
-{}
-{
-	" "propCondition()" = "valCondition()
-}
-
-void propCondition() :
-{}
-{
-	<PROP>
+	<STRING>
 	{ 
 		jjtThis.data.put("value",token.image);
-	}#propCondition
+	}#Class
 }
 
-void valCondition() :
+void DO_ASSIGNMENT():
 {}
 {
-	<VALUE>
+	< SUCH_THAT > < SPACES > ASSIGNMENTS()
+}
+
+void ASSIGNMENTS() #Assignments:
+{}
+{
+	ASSIGNMENT() (< AND > < SPACES > ASSIGNMENT())*
+}
+
+void ASSIGNMENT() #Assignment:
+{}
+{
+	PROPERTY() < ASSIGN > VALUE()
+	
+}
+
+void PROPERTY() :
+{}
+{
+	<STRING>
 	{ 
 		jjtThis.data.put("value",token.image);
-	}#valCondition
+	}#Property
+}
+
+void VALUE() :
+{}
+{
+	<STRING>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#Value
+}
+
+void UPDATE_BODY():
+{}
+{
+  	CLASS_PARAMETER() < SPACES > ASSIGNMENTS() (UPDATE_CONDITION())?
+}
+
+void CLASS_PARAMETER():
+{}
+{
+  	CLASS_NUM_PARAMETER()
+  	| CLASS_ALL_PARAMETER()
+}
+
+
+void UPDATE_CONDITION():
+{}
+{
+  	< WHERE > < SPACES > ASSIGNMENTS()
 }

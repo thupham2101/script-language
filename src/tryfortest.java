@@ -53,7 +53,7 @@ public class tryfortest {
                 else ExpressionParser.ReInit(is);
                 try
                 {
-                 ASTstart start = ExpressionParser.start();
+                 SSLStart start = ExpressionParser.parse();
                  SQLVisitor visitor = new SQLVisitor();
                  outputText.setText((String) visitor.visit(start, ""));
                 }
