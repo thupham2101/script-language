@@ -11,78 +11,71 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 public class tryfortest {
-	static ExpressionParser parser = null;
-	
-	public static void main(String[] args) {
-		JFrame guiFrame = new JFrame();
-        
-        //make sure the program exits when the frame closes
+    static ExpressionParser parser = null;
+
+    public static void main(String[] args) {
+        JFrame guiFrame = new JFrame();
+
+        // make sure the program exits when the frame closes
         guiFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         guiFrame.setTitle("Example GUI");
-        guiFrame.setSize(300,600);
-      
-        //This will center the JFrame in the middle of the screen
+        guiFrame.setSize(300, 600);
+
+        // This will center the JFrame in the middle of the screen
         guiFrame.setLocationRelativeTo(null);
-        
-        //The first JPanel contains a label and text field for entering the expression
+
+        // The first JPanel contains a label and text field for entering the expression
         final JPanel inputPanel = new JPanel();
         JLabel inputLbl = new JLabel("Enter your Expression: ");
         final JTextField inputText = new JTextField("");
         inputText.setColumns(20);
-        
+
         inputPanel.add(inputLbl);
         inputPanel.add(inputText);
-        
-		// The bottom Panel contains a text box for showing results of a parse
+
+        // The bottom Panel contains a text box for showing results of a parse
         final JTextArea outputText = new JTextArea();
         outputText.setColumns(20);
         outputText.setRows(10);
-        
+
         JPanel mainPanel = new JPanel();
         mainPanel.add(inputPanel);
         mainPanel.add(outputText);
-        
+
         // Textfield Action Listener callback - executed when user hits "return"
         inputText.addActionListener(new ActionListener() {
-        	public void actionPerformed(ActionEvent evt) {
+            public void actionPerformed(ActionEvent evt) {
                 String sentence = inputText.getText();
                 // Put parens around sentence so that parser knows scope
-                //sentence = "(" + sentence + ")";
+                // sentence = "(" + sentence + ")";
                 InputStream is = new ByteArrayInputStream(sentence.getBytes());
-                if(parser == null) parser = new ExpressionParser(is);
-                else ExpressionParser.ReInit(is);
-                try
-                {
-                 SSLStart start = ExpressionParser.parse();
-                 SQLVisitor visitor = new SQLVisitor();
-                 outputText.setText((String) visitor.visit(start, ""));
-                }
-                catch (Exception e)
-                {
-                  e.printStackTrace();
-                  outputText.setText("error in expression.\n"+
-                		  				e.getMessage());
-                }
-                catch (Error e)
-                {
+                if (parser == null)
+                    parser = new ExpressionParser(is);
+                else
+                    ExpressionParser.ReInit(is);
+                try {
+                    SSLStart start = ExpressionParser.parse();
+                    SQLVisitor visitor = new SQLVisitor(sentence.split(";"));
+                    outputText.setText((String) visitor.visit(start, ""));
+                } catch (Exception e) {
                     e.printStackTrace();
-                 outputText.setText("error in expression.\n"+
-    		  						   e.getMessage());
+                    outputText.setText("error in expression.\n" + e.getMessage());
+                } catch (Error e) {
+                    e.printStackTrace();
+                    outputText.setText("error in expression.\n" + e.getMessage());
+                } finally {
+
                 }
-                finally
-                {
-                  
-                }
-        	}
+            }
         });
 
         guiFrame.add(mainPanel, BorderLayout.NORTH);
         guiFrame.add(outputText, BorderLayout.CENTER);
         // Layout all component panels
         guiFrame.pack();
-        
-        //make sure the JFrame is visible
+
+        // make sure the JFrame is visible
         guiFrame.setVisible(true);
-	}
+    }
 
 }

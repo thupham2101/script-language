@@ -1,5 +1,6 @@
 
 public class ScriptingProcedure {
+    public static final String COMMENTS = "/* %s */\r\n";
     public static final String ADD_N = 
             "DELIMITER $$\r\n" + 
             "DROP PROCEDURE IF EXISTS createInstances $$\r\n" + 
