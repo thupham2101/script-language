@@ -99,9 +99,9 @@ public class ScriptingProcedure {
             "DROP PROCEDURE IF EXISTS updatePropertyAll $$\r\n" + 
             "CREATE PROCEDURE updatePropertyAll()\r\n" + 
             "BEGIN\r\n" + 
-            "UPDATE %1$s\r\n" + // %1: Table
-            "SET %2$s\r\n" +  // %2: color = 'black'
-            "%3$s;\r\n" + // %3: brand = 'BMW'
+            "UPDATE %1$s\r\n" +
+            "SET %2$s\r\n" + 
+            "%3$s;\r\n" + 
             "END $$\r\n" + 
             "DELIMITER ;\r\n" + 
             "call updatePropertyAll();";

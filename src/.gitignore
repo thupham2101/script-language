@@ -106,3 +106,7 @@
 /SSLUpdateCondition.class
 /SSLUpdateStatement.class
 /SSLValue.class
+/SSLLinkStatement.java
+/SSLLinkStatement.class
+/SSLOclExp.java
+/SSLOclExp.class

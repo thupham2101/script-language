@@ -1,9 +1,15 @@
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.simple.parser.ParseException;
+import org.vgu.ocl2psql.main.OCL2PSQL;
+import org.vgu.ocl2psql.ocl.exception.OclParseException;
+import org.vgu.ocl2psql.sql.utils.SQLAsStringUtils;
+
 public class SQLVisitor implements ExpressionParserVisitor {
 
     String[] statements;
+    String jsonContext = "[{\"class\":\"Car\",\"attributes\":[{\"name\":\"color\", \"type\":\"String\"}]},{\"class\":\"Person\",\"attributes\":[{\"name\":\"name\", \"type\":\"String\"}]},{\"association\":\"Ownership\",\"ends\":[\"owners\", \"ownedCars\"],\"classes\":[\"Car\", \"Person\"]}]";
 
     public SQLVisitor(String[] statements) {
         this.statements = statements;
@@ -111,24 +117,46 @@ public class SQLVisitor implements ExpressionParserVisitor {
         String propConValueAssignment = "";
         if (node.jjtGetNumChildren() > 3) {
             String whereAssignments = node.jjtGetChild(3).jjtAccept(this, "");
-            List<String> whereProperties = new ArrayList<String>();
-            List<String> whereValues = new ArrayList<String>();
-            String[] whereAssignmentList = whereAssignments.split(",");
-            for (String assignment : whereAssignmentList) {
-                String[] assign = assignment.split("=");
-                whereProperties.add(assign[0]);
-                whereValues.add(assign[1]);
+            if(node.jjtGetChild(3) instanceof SSLOclExp) {
+                String toPSQL;
+                OCL2PSQL ocl2psql = new OCL2PSQL();
+                try {
+                    ocl2psql.setPlainUMLContext(jsonContext);
+                    toPSQL = ocl2psql.mapToString(whereAssignments);
+                } catch (ParseException | OclParseException e) {
+                    toPSQL = "";
+                }
+                if ("*".equals(quantity)) {
+                    toPSQL = "WHERE ".concat(table).concat("_id IN ( SELECT res FROM (")
+                            .concat(toPSQL).concat(") AS TEMP)");
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL, table, propertyValueAssignmentWithComma,
+                            toPSQL)).concat("\n");
+                } else {
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_N, Integer.parseInt(quantity), table,
+                            propertyValueAssignmentWithComma, propertyValueAssignmentWithAnd, toPSQL,
+                            "AND ".concat(propertyValueAssignmentWithAnd))).concat("\n");
+                }
             }
-            propConValueAssignment = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
-        }
-        if ("*".equals(quantity)) {
-            propConValueAssignment = "WHERE ".concat(propConValueAssignment);
-            data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL, table, propertyValueAssignmentWithComma,
-                    propConValueAssignment)).concat("\n");
-        } else {
-            data = data.concat(String.format(ScriptingProcedure.UPDATE_N, Integer.parseInt(quantity), table,
-                    propertyValueAssignmentWithComma, propertyValueAssignmentWithAnd, propConValueAssignment,
-                    "AND ".concat(propertyValueAssignmentWithAnd))).concat("\n");
+            else {
+                List<String> whereProperties = new ArrayList<String>();
+                List<String> whereValues = new ArrayList<String>();
+                String[] whereAssignmentList = whereAssignments.split(",");
+                for (String assignment : whereAssignmentList) {
+                    String[] assign = assignment.split("=");
+                    whereProperties.add(assign[0]);
+                    whereValues.add(assign[1]);
+                }
+                propConValueAssignment = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
+                if ("*".equals(quantity)) {
+                    propConValueAssignment = "WHERE ".concat(propConValueAssignment);
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL, table, propertyValueAssignmentWithComma,
+                            propConValueAssignment)).concat("\n");
+                } else {
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_N, Integer.parseInt(quantity), table,
+                            propertyValueAssignmentWithComma, propertyValueAssignmentWithAnd, propConValueAssignment,
+                            "AND ".concat(propertyValueAssignmentWithAnd))).concat("\n");
+                }
+            }
         }
         return data;
     }
@@ -157,5 +185,16 @@ public class SQLVisitor implements ExpressionParserVisitor {
             data = concatenation;
         }
         return data;
+    }
+
+    @Override
+    public String visit(SSLLinkStatement node, String data) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public String visit(SSLOclExp node, String data) {
+        return (String) node.data.get("value");
     }
 }
