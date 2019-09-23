@@ -46,6 +46,8 @@ public class tryfortest {
         inputText.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
                 String sentence = inputText.getText();
+                sentence = sentence.replaceAll("U([s,S][i,I][n,N][g,G])", "O$1");
+                sentence = sentence.replaceAll("u([s,S][i,I][n,N][g,G])", "o$1");
                 // Put parens around sentence so that parser knows scope
                 // sentence = "(" + sentence + ")";
                 InputStream is = new ByteArrayInputStream(sentence.getBytes());

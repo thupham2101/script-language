@@ -31,7 +31,7 @@ TOKEN : /* action */
 	|  < QUANTIFIER: "EXACTLY" | "AT MOST" | "AT LEAST" >
     |  < SUCH_THAT: "SUCH THAT">
     |  < WITH: "WITH" >
-    |  < USING: "USING" >
+    |  < USING: "OSING" >
     |  < WHERE: (" ")+"WHERE" >
 	|  < AND: (" ")+"AND" >
 	|  < ALL: "*" >
@@ -80,7 +80,13 @@ void LINK_EXPRESSION() #LinkStatement:
 void LINK_BODY():
 {}
 {
-  	CLASS_PARAMETER() < SPACES > < WITH > < SPACES > CLASS_PARAMETER() < SPACES > < USING > < SPACES > < STRING >
+  	CLASS_PARAMETER() (CONDITION())? < SPACES > < WITH > < SPACES > CLASS_PARAMETER() (CONDITION())? < SPACES > ASSOC_BODY() 
+}
+
+void ASSOC_BODY():
+{}
+{
+	< USING > < SPACES > CLASS_NAME()
 }
 
 void ADD_EXPRESSION() #AddStatement:
@@ -203,7 +209,7 @@ void VALUE() :
 void UPDATE_BODY():
 {}
 {
-  	CLASS_PARAMETER() < SPACES > ASSIGNMENTS() (UPDATE_CONDITION())?
+  	CLASS_PARAMETER() < SPACES > ASSIGNMENTS() (CONDITION())?
 }
 
 void CLASS_PARAMETER():
@@ -214,13 +220,13 @@ void CLASS_PARAMETER():
 }
 
 
-void UPDATE_CONDITION():
+void CONDITION():
 {}
 {
-  	< WHERE > < SPACES > CONDITION()
+  	< WHERE > < SPACES > CONDITION_BODY()
 }
 
-void CONDITION():
+void CONDITION_BODY():
 {}
 {
 		ASSIGNMENTS()

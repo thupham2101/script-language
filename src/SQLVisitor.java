@@ -1,18 +1,26 @@
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.simple.JSONArray;
+import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.vgu.ocl2psql.main.OCL2PSQL;
 import org.vgu.ocl2psql.ocl.exception.OclParseException;
-import org.vgu.ocl2psql.sql.utils.SQLAsStringUtils;
+import org.vgu.ocl2psql.ocl.expressions.Utilities;
 
 public class SQLVisitor implements ExpressionParserVisitor {
 
-    String[] statements;
-    String jsonContext = "[{\"class\":\"Car\",\"attributes\":[{\"name\":\"color\", \"type\":\"String\"}]},{\"class\":\"Person\",\"attributes\":[{\"name\":\"name\", \"type\":\"String\"}]},{\"association\":\"Ownership\",\"ends\":[\"owners\", \"ownedCars\"],\"classes\":[\"Car\", \"Person\"]}]";
+    private String[] statements;
+    private String jsonContext = "[{\"class\":\"Car\",\"attributes\":[{\"name\":\"color\", \"type\":\"String\"}]},{\"class\":\"Person\",\"attributes\":[{\"name\":\"name\", \"type\":\"String\"}]},{\"association\":\"Ownership\",\"ends\":[\"owners\", \"ownedCars\"],\"classes\":[\"Car\", \"Person\"]}]";
 
     public SQLVisitor(String[] statements) {
-        this.statements = statements;
+        this.statements = new String[statements.length];
+        int pos = 0;
+        for(String statement : statements) {
+            statement = statement.replaceAll("o([s,S][i,I][n,N][g,G])", "u$1");
+            statement = statement.replaceAll("O([s,S][i,I][n,N][g,G])", "U$1");
+            this.statements[pos] = statement;
+        }
     }
 
     @Override
@@ -116,28 +124,21 @@ public class SQLVisitor implements ExpressionParserVisitor {
         String propertyValueAssignmentWithComma = StringUtils.setPropertiesToValues(properties, values, ",");
         String propConValueAssignment = "";
         if (node.jjtGetNumChildren() > 3) {
-            String whereAssignments = node.jjtGetChild(3).jjtAccept(this, "");
             if(node.jjtGetChild(3) instanceof SSLOclExp) {
-                String toPSQL;
-                OCL2PSQL ocl2psql = new OCL2PSQL();
-                try {
-                    ocl2psql.setPlainUMLContext(jsonContext);
-                    toPSQL = ocl2psql.mapToString(whereAssignments);
-                } catch (ParseException | OclParseException e) {
-                    toPSQL = "";
-                }
+                String toPSQL = node.jjtGetChild(3).jjtAccept(this, "");
                 if ("*".equals(quantity)) {
                     toPSQL = "WHERE ".concat(table).concat("_id IN ( SELECT res FROM (")
                             .concat(toPSQL).concat(") AS TEMP)");
                     data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL, table, propertyValueAssignmentWithComma,
                             toPSQL)).concat("\n");
                 } else {
-                    data = data.concat(String.format(ScriptingProcedure.UPDATE_N, Integer.parseInt(quantity), table,
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_N_OCL, Integer.parseInt(quantity), table,
                             propertyValueAssignmentWithComma, propertyValueAssignmentWithAnd, toPSQL,
                             "AND ".concat(propertyValueAssignmentWithAnd))).concat("\n");
                 }
             }
             else {
+                String whereAssignments = node.jjtGetChild(3).jjtAccept(this, "");
                 List<String> whereProperties = new ArrayList<String>();
                 List<String> whereValues = new ArrayList<String>();
                 String[] whereAssignmentList = whereAssignments.split(",");
@@ -189,12 +190,75 @@ public class SQLVisitor implements ExpressionParserVisitor {
 
     @Override
     public String visit(SSLLinkStatement node, String data) {
-        // TODO Auto-generated method stub
-        return null;
+        int pos = 0;
+        Integer quantity1 = Integer.parseInt(node.jjtGetChild(pos++).jjtAccept(this, data));
+        String table1 = node.jjtGetChild(pos++).jjtAccept(this, data);
+        String whereCondition1 = "";
+        if(node.jjtGetChild(pos) instanceof SSLAssignments) {
+            String assignments = node.jjtGetChild(pos++).jjtAccept(this, "");
+            List<String> whereProperties = new ArrayList<String>();
+            List<String> whereValues = new ArrayList<String>();
+            String[] whereAssignmentList = assignments.split(",");
+            for (String assignment : whereAssignmentList) {
+                String[] assign = assignment.split("=");
+                whereProperties.add(assign[0]);
+                whereValues.add(assign[1]);
+            }
+            whereCondition1 = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
+            whereCondition1 = "WHERE ".concat(whereCondition1).concat(";\r\n");
+        } else if(node.jjtGetChild(pos) instanceof SSLOclExp) {
+            whereCondition1 = node.jjtGetChild(pos++).jjtAccept(this, "");
+            whereCondition1 = table1.concat("_id IN \r\n(SELECT res FROM \r\n(").concat(whereCondition1).concat(") AS TEMP");
+            whereCondition1 = "WHERE ".concat(whereCondition1).concat(";\r\n");
+        }
+        Integer quantity2 = Integer.parseInt(node.jjtGetChild(pos++).jjtAccept(this, data));
+        String table2 = node.jjtGetChild(pos++).jjtAccept(this, data);
+        String whereCondition2 = "";
+        if(node.jjtGetChild(pos) instanceof SSLAssignments) {
+            String assignments = node.jjtGetChild(pos++).jjtAccept(this, "");
+            List<String> whereProperties = new ArrayList<String>();
+            List<String> whereValues = new ArrayList<String>();
+            String[] whereAssignmentList = assignments.split(",");
+            for (String assignment : whereAssignmentList) {
+                String[] assign = assignment.split("=");
+                whereProperties.add(assign[0]);
+                whereValues.add(assign[1]);
+            }
+            whereCondition2 = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
+            whereCondition2 = "WHERE ".concat(whereCondition2).concat(";\r\n");
+        } else if(node.jjtGetChild(pos) instanceof SSLOclExp) {
+            whereCondition2 = node.jjtGetChild(pos++).jjtAccept(this, "");
+            whereCondition2 = table2.concat("_id IN \r\n(SELECT res FROM \r\n(").concat(whereCondition2).concat(") AS TEMP");
+            whereCondition2 = "WHERE ".concat(whereCondition2).concat(";\r\n");
+        }
+        String assocClass = node.jjtGetChild(pos).jjtAccept(this, data);
+        String end1 = "";
+        String end2 = "";
+        try {
+            end1 = Utilities.getAssociation((JSONArray) new JSONParser().parse(this.jsonContext), assocClass, table1);
+            end2 = Utilities.getAssociation((JSONArray) new JSONParser().parse(this.jsonContext), assocClass, table2);
+        } catch (ParseException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        data = data.concat(String.format(ScriptingProcedure.LINK, quantity1, quantity2,
+                table1, table2, whereCondition1, whereCondition2, assocClass, end1, end2)).concat("\n");
+        return data;
     }
 
     @Override
     public String visit(SSLOclExp node, String data) {
-        return (String) node.data.get("value");
+        String oclExpression = (String) node.data.get("value");
+        OCL2PSQL ocl2psql = new OCL2PSQL();
+        try {
+            ocl2psql.setPlainUMLContext(jsonContext);
+            return ocl2psql.mapToString(oclExpression);
+        } catch (ParseException | OclParseException e) {
+            return "";
+        }
+    }
+    
+    public void setJsonContext(String context) {
+        this.jsonContext = context;
     }
 }
