@@ -15,12 +15,6 @@ public class SQLVisitor implements ExpressionParserVisitor {
 
     public SQLVisitor(String[] statements) {
         this.statements = new String[statements.length];
-        int pos = 0;
-        for(String statement : statements) {
-            statement = statement.replaceAll("o([s,S][i,I][n,N][g,G])", "u$1");
-            statement = statement.replaceAll("O([s,S][i,I][n,N][g,G])", "U$1");
-            this.statements[pos] = statement;
-        }
     }
 
     @Override
@@ -57,14 +51,14 @@ public class SQLVisitor implements ExpressionParserVisitor {
 
     @Override
     public String visit(SSLDoStatement node, String data) {
-        String quantifier = node.jjtGetChild(0).jjtAccept(this, data);
-        Integer number = Integer.parseInt(node.jjtGetChild(1).jjtAccept(this, data));
-        String table = node.jjtGetChild(2).jjtAccept(this, data);
-        SSLAssignments assignments = (SSLAssignments) node.jjtGetChild(3);
+        int pivot = 0;
+        String quantifier = node.jjtGetChild(pivot++).jjtAccept(this, data);
+        Integer number = Integer.parseInt(node.jjtGetChild(pivot++).jjtAccept(this, data));
+        String table = node.jjtGetChild(pivot++).jjtAccept(this, data);
         List<String> properties = new ArrayList<String>();
         List<String> values = new ArrayList<String>();
-        for (int i = 0; i < assignments.jjtGetNumChildren(); i++) {
-            SSLAssignment assignment = (SSLAssignment) assignments.jjtGetChild(i);
+        while(pivot < node.jjtGetNumChildren()) {
+            SSLAssignment assignment = (SSLAssignment) node.jjtGetChild(pivot++);
             String property = assignment.jjtGetChild(0).jjtAccept(this, data);
             String value = assignment.jjtGetChild(1).jjtAccept(this, data);
             properties.add(property);
@@ -73,18 +67,12 @@ public class SQLVisitor implements ExpressionParserVisitor {
         String propertyList = StringUtils.join(properties, ",");
         String valueList = StringUtils.join(values, ",");
         String propertyNULLAssignment = StringUtils.setPropertiesToNull(properties);
-
         String propertyValueAssignment = StringUtils.setPropertiesToValues(properties, values, "AND");
-        // multiple value. color = 'white', brand = 'BMW'
         String procedure = "EXACTLY".equalsIgnoreCase(quantifier) ? ScriptingProcedure.DO_EXACTLY_N
                 : "AT MOST".equalsIgnoreCase(quantifier) ? ScriptingProcedure.DO_AT_MOST_N
                         : ScriptingProcedure.DO_AT_LEAST_N;
         data = data.concat(
                 String.format(procedure, number, table, propertyValueAssignment, propertyNULLAssignment, propertyList, // is
-                                                                                                                       // used
-                                                                                                                       // for
-                                                                                                                       // insert
-                                                                                                                       // multiple
                         valueList))
                 .concat("\n");
         return data;
@@ -105,58 +93,69 @@ public class SQLVisitor implements ExpressionParserVisitor {
     public String visit(SSLValue node, String data) {
         return (String) node.data.get("value");
     }
-//    
 
     @Override
     public String visit(SSLUpdateStatement node, String data) {
-        String quantity = node.jjtGetChild(0).jjtAccept(this, data);
-        String table = node.jjtGetChild(1).jjtAccept(this, data);
-        String assignments = node.jjtGetChild(2).jjtAccept(this, "");
+        int pivot = 0;
+        String quantity = node.jjtGetChild(pivot++).jjtAccept(this, data);
+        String table = node.jjtGetChild(pivot++).jjtAccept(this, data);
         List<String> properties = new ArrayList<String>();
         List<String> values = new ArrayList<String>();
-        String[] assignmentList = assignments.split(",");
-        for (String assignment : assignmentList) {
-            String[] assign = assignment.split("=");
-            properties.add(assign[0]);
-            values.add(assign[1]);
+        while(pivot < node.jjtGetNumChildren() && node.jjtGetChild(pivot) instanceof SSLAssignment) {
+            SSLAssignment assignment = (SSLAssignment) node.jjtGetChild(pivot++);
+            String property = assignment.jjtGetChild(0).jjtAccept(this, data);
+            String value = assignment.jjtGetChild(1).jjtAccept(this, data);
+            properties.add(property);
+            values.add(value);
         }
         String propertyValueAssignmentWithAnd = StringUtils.setPropertiesToValues(properties, values, "AND");
         String propertyValueAssignmentWithComma = StringUtils.setPropertiesToValues(properties, values, ",");
         String propConValueAssignment = "";
-        if (node.jjtGetNumChildren() > 3) {
-            if(node.jjtGetChild(3) instanceof SSLOclExp) {
-                String toPSQL = node.jjtGetChild(3).jjtAccept(this, "");
+        if (pivot < node.jjtGetNumChildren()) {
+            SSLWhereCondition whereCon = (SSLWhereCondition) node.jjtGetChild(pivot);
+            if(whereCon.jjtGetChild(0) instanceof SSLOclExp) {
+                String toPSQL = whereCon.jjtGetChild(0).jjtAccept(this, "");
                 if ("*".equals(quantity)) {
-                    toPSQL = "WHERE ".concat(table).concat("_id IN ( SELECT res FROM (")
+                    toPSQL = table.concat("_id IN ( SELECT res FROM (")
                             .concat(toPSQL).concat(") AS TEMP)");
-                    data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL, table, propertyValueAssignmentWithComma,
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL_WHERE, table, propertyValueAssignmentWithComma,
                             toPSQL)).concat("\n");
                 } else {
-                    data = data.concat(String.format(ScriptingProcedure.UPDATE_N_OCL, Integer.parseInt(quantity), table,
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_N_WHERE_OCL, Integer.parseInt(quantity), table,
                             propertyValueAssignmentWithComma, propertyValueAssignmentWithAnd, toPSQL,
                             "AND ".concat(propertyValueAssignmentWithAnd))).concat("\n");
                 }
             }
             else {
-                String whereAssignments = node.jjtGetChild(3).jjtAccept(this, "");
+                int pivotWhere = 0;
                 List<String> whereProperties = new ArrayList<String>();
                 List<String> whereValues = new ArrayList<String>();
-                String[] whereAssignmentList = whereAssignments.split(",");
-                for (String assignment : whereAssignmentList) {
-                    String[] assign = assignment.split("=");
-                    whereProperties.add(assign[0]);
-                    whereValues.add(assign[1]);
+                while(pivotWhere < whereCon.jjtGetNumChildren()) {
+                    SSLAssignment assignment = (SSLAssignment) whereCon.jjtGetChild(pivotWhere++);
+                    String property = assignment.jjtGetChild(0).jjtAccept(this, data);
+                    String value = assignment.jjtGetChild(1).jjtAccept(this, data);
+                    whereProperties.add(property);
+                    whereValues.add(value);
                 }
                 propConValueAssignment = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
                 if ("*".equals(quantity)) {
-                    propConValueAssignment = "WHERE ".concat(propConValueAssignment);
-                    data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL, table, propertyValueAssignmentWithComma,
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL_WHERE, table, propertyValueAssignmentWithComma,
                             propConValueAssignment)).concat("\n");
                 } else {
-                    data = data.concat(String.format(ScriptingProcedure.UPDATE_N, Integer.parseInt(quantity), table,
+                    data = data.concat(String.format(ScriptingProcedure.UPDATE_N_WHERE, Integer.parseInt(quantity), table,
                             propertyValueAssignmentWithComma, propertyValueAssignmentWithAnd, propConValueAssignment,
                             "AND ".concat(propertyValueAssignmentWithAnd))).concat("\n");
                 }
+            }
+        }
+        else {
+            if ("*".equals(quantity)) {
+                data = data.concat(String.format(ScriptingProcedure.UPDATE_ALL, table, propertyValueAssignmentWithComma));
+            }
+            else {
+                data = data.concat(String.format(ScriptingProcedure.UPDATE_N, Integer.parseInt(quantity), table,
+                        propertyValueAssignmentWithComma, propertyValueAssignmentWithAnd, propConValueAssignment,
+                        "AND ".concat(propertyValueAssignmentWithAnd))).concat("\n");
             }
         }
         return data;
@@ -165,14 +164,6 @@ public class SQLVisitor implements ExpressionParserVisitor {
     @Override
     public String visit(SSLAll node, String data) {
         return (String) node.data.get("value");
-    }
-
-    @Override
-    public String visit(SSLAssignments node, String data) {
-        for (int i = 0; i < node.jjtGetNumChildren(); i++) {
-            data = node.jjtGetChild(i).jjtAccept(this, data);
-        }
-        return data;
     }
 
     @Override
@@ -194,49 +185,59 @@ public class SQLVisitor implements ExpressionParserVisitor {
         Integer quantity1 = Integer.parseInt(node.jjtGetChild(pos++).jjtAccept(this, data));
         String table1 = node.jjtGetChild(pos++).jjtAccept(this, data);
         String whereCondition1 = "";
-        if(node.jjtGetChild(pos) instanceof SSLAssignments) {
-            String assignments = node.jjtGetChild(pos++).jjtAccept(this, "");
-            List<String> whereProperties = new ArrayList<String>();
-            List<String> whereValues = new ArrayList<String>();
-            String[] whereAssignmentList = assignments.split(",");
-            for (String assignment : whereAssignmentList) {
-                String[] assign = assignment.split("=");
-                whereProperties.add(assign[0]);
-                whereValues.add(assign[1]);
+        if(node.jjtGetChild(pos) instanceof SSLWhereCondition) {
+            SSLWhereCondition whereCon1 = (SSLWhereCondition) node.jjtGetChild(pos++);
+            if(whereCon1.jjtGetChild(0) instanceof SSLOclExp) {
+                whereCondition1 = whereCon1.jjtGetChild(0).jjtAccept(this, "");
+                whereCondition1 = table1.concat("_id IN \r\n(SELECT res FROM \r\n(").concat(whereCondition1).concat(") AS TEMP");
+                whereCondition1 = "WHERE ".concat(whereCondition1).concat(")\r\n");
             }
-            whereCondition1 = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
-            whereCondition1 = "WHERE ".concat(whereCondition1).concat(";\r\n");
-        } else if(node.jjtGetChild(pos) instanceof SSLOclExp) {
-            whereCondition1 = node.jjtGetChild(pos++).jjtAccept(this, "");
-            whereCondition1 = table1.concat("_id IN \r\n(SELECT res FROM \r\n(").concat(whereCondition1).concat(") AS TEMP");
-            whereCondition1 = "WHERE ".concat(whereCondition1).concat(";\r\n");
+            else {
+                List<String> whereProperties = new ArrayList<String>();
+                List<String> whereValues = new ArrayList<String>();
+                int pivotWhere = 0;
+                while(pivotWhere < whereCon1.jjtGetNumChildren()) {
+                    SSLAssignment assignment = (SSLAssignment) whereCon1.jjtGetChild(pivotWhere++);
+                    String property = assignment.jjtGetChild(0).jjtAccept(this, data);
+                    String value = assignment.jjtGetChild(1).jjtAccept(this, data);
+                    whereProperties.add(property);
+                    whereValues.add(value);
+                }
+                whereCondition1 = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
+                whereCondition1 = "WHERE ".concat(whereCondition1).concat("\r\n");
+            }
         }
         Integer quantity2 = Integer.parseInt(node.jjtGetChild(pos++).jjtAccept(this, data));
         String table2 = node.jjtGetChild(pos++).jjtAccept(this, data);
         String whereCondition2 = "";
-        if(node.jjtGetChild(pos) instanceof SSLAssignments) {
-            String assignments = node.jjtGetChild(pos++).jjtAccept(this, "");
-            List<String> whereProperties = new ArrayList<String>();
-            List<String> whereValues = new ArrayList<String>();
-            String[] whereAssignmentList = assignments.split(",");
-            for (String assignment : whereAssignmentList) {
-                String[] assign = assignment.split("=");
-                whereProperties.add(assign[0]);
-                whereValues.add(assign[1]);
+        if(node.jjtGetChild(pos) instanceof SSLWhereCondition) {
+            SSLWhereCondition whereCon2 = (SSLWhereCondition) node.jjtGetChild(pos++);
+            if(whereCon2.jjtGetChild(0) instanceof SSLOclExp) {
+                whereCondition2 = whereCon2.jjtGetChild(0).jjtAccept(this, "");
+                whereCondition2 = table2.concat("_id IN \r\n(SELECT res FROM \r\n(").concat(whereCondition2).concat(") AS TEMP");
+                whereCondition2 = "WHERE ".concat(whereCondition2).concat(")\r\n");
             }
-            whereCondition2 = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
-            whereCondition2 = "WHERE ".concat(whereCondition2).concat(";\r\n");
-        } else if(node.jjtGetChild(pos) instanceof SSLOclExp) {
-            whereCondition2 = node.jjtGetChild(pos++).jjtAccept(this, "");
-            whereCondition2 = table2.concat("_id IN \r\n(SELECT res FROM \r\n(").concat(whereCondition2).concat(") AS TEMP");
-            whereCondition2 = "WHERE ".concat(whereCondition2).concat(";\r\n");
+            else {
+                List<String> whereProperties = new ArrayList<String>();
+                List<String> whereValues = new ArrayList<String>();
+                int pivotWhere = 0;
+                while(pivotWhere < whereCon2.jjtGetNumChildren()) {
+                    SSLAssignment assignment = (SSLAssignment) whereCon2.jjtGetChild(pivotWhere++);
+                    String property = assignment.jjtGetChild(0).jjtAccept(this, data);
+                    String value = assignment.jjtGetChild(1).jjtAccept(this, data);
+                    whereProperties.add(property);
+                    whereValues.add(value);
+                }
+                whereCondition2 = StringUtils.setPropertiesToValues(whereProperties, whereValues, "AND");
+                whereCondition2 = "WHERE ".concat(whereCondition2).concat("\r\n");
+            }
         }
         String assocClass = node.jjtGetChild(pos).jjtAccept(this, data);
         String end1 = "";
         String end2 = "";
         try {
-            end1 = Utilities.getAssociation((JSONArray) new JSONParser().parse(this.jsonContext), assocClass, table1);
-            end2 = Utilities.getAssociation((JSONArray) new JSONParser().parse(this.jsonContext), assocClass, table2);
+            end1 = Utilities.getAssociationAttribute((JSONArray) new JSONParser().parse(this.jsonContext), assocClass, table1);
+            end2 = Utilities.getAssociationAttribute((JSONArray) new JSONParser().parse(this.jsonContext), assocClass, table2);
         } catch (ParseException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -260,5 +261,11 @@ public class SQLVisitor implements ExpressionParserVisitor {
     
     public void setJsonContext(String context) {
         this.jsonContext = context;
+    }
+
+    @Override
+    public String visit(SSLWhereCondition node, String data) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

@@ -24,19 +24,19 @@ SKIP :
 
 TOKEN : /* action */
 {
-	   < ADD: (" ")*"ADD" >
-	|  < DO: (" ")*"DO">
-	|  < UPDATE : (" ")*"UPDATE" >
-	|  < LINK : (" ")*"LINK" >
+	   < ADD: "ADD" >
+	|  < DO: "DO">
+	|  < UPDATE : "UPDATE" >
+	|  < LINK : "LINK" >
 	|  < QUANTIFIER: "EXACTLY" | "AT MOST" | "AT LEAST" >
     |  < SUCH_THAT: "SUCH THAT">
-    |  < WITH: "WITH" >
-    |  < USING: "OSING" >
-    |  < WHERE: (" ")+"WHERE" >
-	|  < AND: (" ")+"AND" >
+    |  < WITH: "@@WITH" >
+    |  < USING: "@@USING" >
+    |  < WHERE: "WHERE" >
+	|  < AND: "AND" >
 	|  < ALL: "*" >
-	|  < EOC: (" ")*";" >
-	|  < ASSIGN	: (" ")*"="(" ")* >
+	|  < EOC: ";" >
+	|  < ASSIGN	: "=" >
 	|  < IN: "IN" >
 }
 
@@ -44,15 +44,14 @@ TOKEN : //keywords
 {
      < NUMBER : (<DIGIT>)+  >
 	|   < STRING: (< LETTER >)+ >
-	| 	< SPACES	: (< SPACE >)+ >
+	| 	< WS: (< SPACE >)+ >
 }
-
 
 TOKEN :
 {
-	  < #DIGIT				: ["0"-"9"]>
-	| < #LETTER				: ["A"-"Z", "a"-"z", "'", "-", ">", "(", ")", ":", ".", "|", "="] >
-	| < #SPACE				: " " >
+	  < #DIGIT		: ["0"-"9"]>
+	| < #LETTER		: ["A"-"Z", "a"-"z", "'", "-", ">", "(", ")", ":", ".", "|", "=", "<", "0"-"9"] >
+	| < #SPACE		: " " >
 	
 }
 
@@ -65,82 +64,23 @@ SSLStart parse() #Start:{}
 void STATEMENT():
 {}
 {
-		ADD_EXPRESSION()
+  	EXPRESSION() < EOC > (< WS >)*
+}
+
+void EXPRESSION():
+{}
+{
+	ADD_EXPRESSION()
 	|   DO_EXPRESSION()
 	|	UPDATE_EXPRESSION()
 	|   LINK_EXPRESSION()
 }
 
-void LINK_EXPRESSION() #LinkStatement:
-{}
-{
-  < LINK > < SPACES > LINK_BODY() < EOC >
-}
-
-void LINK_BODY():
-{}
-{
-  	CLASS_PARAMETER() (CONDITION())? < SPACES > < WITH > < SPACES > CLASS_PARAMETER() (CONDITION())? < SPACES > ASSOC_BODY() 
-}
-
-void ASSOC_BODY():
-{}
-{
-	< USING > < SPACES > CLASS_NAME()
-}
-
 void ADD_EXPRESSION() #AddStatement:
 {}
 {
-  < ADD > < SPACES > CLASS_NUM_PARAMETER() < EOC >
+  < ADD > (< WS >)+ NUMBER_QUANTITY() (< WS >)+ CLASS_NAME()
 }
-
-void DO_EXPRESSION() #DoStatement:
-{}
-{
-  < DO > < SPACES > DO_BODY() < EOC >
-}
-
-void UPDATE_EXPRESSION() #UpdateStatement:
-{}
-{
-  < UPDATE > < SPACES > UPDATE_BODY() < EOC >
-}
-
-void CLASS_NUM_PARAMETER() :
-{}
-{
-	NUMBER_QUANTITY() < SPACES > CLASS_NAME()
-}
-
-void CLASS_ALL_PARAMETER() :
-{}
-{
-	ALL_QUANTITY() < SPACES > CLASS_NAME()
-}
-
-void DO_BODY():
-{}
-{
-	QUANTIFIER_ENUM() < SPACES > DO_PARAMETER()
-}
-
-void QUANTIFIER_ENUM():
-{}
-{
-	<QUANTIFIER>
-	{ 
-		jjtThis.data.put("value",token.image);
-	}#Quantifier
-}
-
-void DO_PARAMETER():
-{}
-{
-	CLASS_NUM_PARAMETER() < SPACES > DO_ASSIGNMENT()
-}
-
-
 
 void NUMBER_QUANTITY() :
 {}
@@ -151,41 +91,38 @@ void NUMBER_QUANTITY() :
 	}#Number
 }
 
-void ALL_QUANTITY() :
+void CLASS_PARAMETER():
 {}
 {
-	<ALL>
-	{ 
-		jjtThis.data.put("value",token.image);
-	}#All
+  	CLASS_NUM_PARAMETER()
+  	| CLASS_ALL_PARAMETER()
 }
 
-void CLASS_NAME() :
+void DO_EXPRESSION() #DoStatement:
 {}
 {
-	<STRING>
-	{ 
-		jjtThis.data.put("value",token.image);
-	}#Class
+  < DO > (< WS >)+ QUANTIFIER_ENUM() (< WS >)+
+  NUMBER_QUANTITY() (< WS >)+ CLASS_NAME() (< WS >)+
+  < SUCH_THAT > (< WS >)+ ASSIGNMENTS()
 }
 
-void DO_ASSIGNMENT():
+void ASSIGNMENTS():
 {}
 {
-	< SUCH_THAT > < SPACES > ASSIGNMENTS()
+	ASSIGNMENT() [(< WS >)+ ADDITIONAL_ASSIGNMENT()]
 }
 
-void ASSIGNMENTS() #Assignments:
+void ADDITIONAL_ASSIGNMENT():
 {}
 {
-	ASSIGNMENT() (< AND > < SPACES > ASSIGNMENT())*
+	< AND > (< WS >)+ ASSIGNMENTS()
+	|	< WHERE > (< WS >)+ CONDITION_BODY()
 }
 
 void ASSIGNMENT() #Assignment:
 {}
 {
-	PROPERTY() < ASSIGN > VALUE()
-	
+	PROPERTY() (< WS >)+ < ASSIGN > (< WS >)+ VALUE()
 }
 
 void PROPERTY() :
@@ -206,31 +143,75 @@ void VALUE() :
 	}#Value
 }
 
-void UPDATE_BODY():
+void UPDATE_EXPRESSION() #UpdateStatement:
 {}
 {
-  	CLASS_PARAMETER() < SPACES > ASSIGNMENTS() (CONDITION())?
+  < UPDATE > (< WS >)+ CLASS_PARAMETER() (< WS >)+ ASSIGNMENTS()
 }
 
-void CLASS_PARAMETER():
+void LINK_EXPRESSION() #LinkStatement:
 {}
 {
-  	CLASS_NUM_PARAMETER()
-  	| CLASS_ALL_PARAMETER()
+  < LINK > (< WS >)+ LINK_BODY() 
 }
 
-
-void CONDITION():
+void LINK_BODY():
 {}
 {
-  	< WHERE > < SPACES > CONDITION_BODY()
+  	NUMBER_QUANTITY() (< WS >)+ CLASS_NAME() 
+  	[< WS > < WHERE > (< WS >)+ CONDITION_BODY()]
+  	< WITH > (< WS >)+
+  	NUMBER_QUANTITY() (< WS >)+ CLASS_NAME() 
+  	[< WS > < WHERE > (< WS >)+ CONDITION_BODY()]
+  	< USING > (< WS >)+ CLASS_NAME() 
 }
 
-void CONDITION_BODY():
+void CLASS_ALL_PARAMETER() :
+{}
+{
+	ALL_QUANTITY() (< WS >)+ CLASS_NAME()
+}
+
+void CLASS_NUM_PARAMETER() :
+{}
+{
+	NUMBER_QUANTITY() (< WS >)+ CLASS_NAME()
+}
+
+void QUANTIFIER_ENUM():
+{}
+{
+	<QUANTIFIER>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#Quantifier
+}
+
+
+
+void ALL_QUANTITY() :
+{}
+{
+	<ALL>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#All
+}
+
+void CLASS_NAME() :
+{}
+{
+	<STRING>
+	{ 
+		jjtThis.data.put("value",token.image);
+	}#Class
+}
+
+void CONDITION_BODY() #WhereCondition:
 {}
 {
 		ASSIGNMENTS()
-	| 	< IN > < SPACES > OCL_EXPRESSION()
+	| 	< IN > (< WS >)+ OCL_EXPRESSION()
 }
 
 void OCL_EXPRESSION():
